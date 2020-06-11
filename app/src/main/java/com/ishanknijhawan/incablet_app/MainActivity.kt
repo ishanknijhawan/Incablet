@@ -48,7 +48,7 @@ class MainActivity : AppCompatActivity() {
             layoutNoInternet.visibility = View.VISIBLE
         }
 
-        //recheck for internet connection
+        //recheck for internet connection on device
         btnRetry.setOnClickListener {
             if (internetAvailable()) {
                 layoutNoInternet.visibility = View.GONE
