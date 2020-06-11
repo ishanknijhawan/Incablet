@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    //check if internet connection is available on device
+    //check if internet connection is available
     @Throws(InterruptedException::class, IOException::class)
     fun internetAvailable(): Boolean {
         val command = "ping -c 1 google.com"
