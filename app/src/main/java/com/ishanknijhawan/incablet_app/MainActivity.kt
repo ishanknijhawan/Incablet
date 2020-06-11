@@ -38,35 +38,37 @@ class MainActivity : AppCompatActivity() {
         layoutNoInternet.visibility = View.GONE
         progress_circular.visibility = View.GONE
 
-        if (internetAvailable()){
+        //if device is connected to internet, show customers else show no internet dialog
+        if (internetAvailable()) {
             layoutNoInternet.visibility = View.GONE
             progress_circular.visibility = View.VISIBLE
             fetchResults()
             initDialog()
-        }
-        else {
+        } else {
             layoutNoInternet.visibility = View.VISIBLE
         }
 
+        //recheck for internet connection
         btnRetry.setOnClickListener {
-            if (internetAvailable()){
+            if (internetAvailable()) {
                 layoutNoInternet.visibility = View.GONE
                 fetchResults()
                 initDialog()
-            }
-            else {
+            } else {
                 layoutNoInternet.visibility = View.VISIBLE
             }
         }
 
     }
 
+    //check if internet connection is available on device
     @Throws(InterruptedException::class, IOException::class)
     fun internetAvailable(): Boolean {
         val command = "ping -c 1 google.com"
         return Runtime.getRuntime().exec(command).waitFor() == 0
     }
 
+    //init welcome dialog
     private fun initDialog() {
         MaterialAlertDialogBuilder(this)
             .setTitle("Welcome")
@@ -83,14 +85,19 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    //fetch results from API
     private fun fetchResults() {
         GlobalScope.launch {
+            //work done on background thread
             val response = withContext(Dispatchers.IO) { Client.api.execute() }
             Log.d("result", "response is...")
             if (response.isSuccessful) {
                 val data = Gson().fromJson(response.body?.string(), Customer::class.java)
+                //back to main thread for ui binding
                 launch(Dispatchers.Main) {
                     progress_circular.visibility = View.GONE
+
+                    //split the data list into active, left and on board status
                     for (i in data.list) {
                         when (i.status) {
                             "active" ->
@@ -101,20 +108,23 @@ class MainActivity : AppCompatActivity() {
                                 alOnBoard.add(i)
                         }
                     }
+                    //sort individual list on date criteria
                     sortByDate(alActive)
                     sortByDate(alLeft)
                     sortByDate(alOnBoard)
 
+                    //merge back all three sublist into new list
                     newList.addAll(alActive)
                     newList.addAll(alLeft)
                     newList.addAll(alOnBoard)
+                    //pass this list for binding data
                     bindData(newList)
                 }
             }
         }
     }
 
-
+    //this function sorts the list in ascending order of date
     private fun sortByDate(list: ArrayList<CustomerItem>) {
         Collections.sort(list, object : Comparator<CustomerItem> {
             var f: DateFormat = SimpleDateFormat("dd/MM/yyyy")
@@ -129,6 +139,7 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    //bind the new list to the adapter and show on screen
     private fun bindData(list: ArrayList<CustomerItem>) {
         rvCustomer.layoutManager = LinearLayoutManager(this)
         rvCustomer.adapter = CustomerAdapter(list, this)

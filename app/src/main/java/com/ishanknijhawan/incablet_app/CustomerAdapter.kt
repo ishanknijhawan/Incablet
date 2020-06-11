@@ -54,7 +54,7 @@ class CustomerAdapter(val items: ArrayList<CustomerItem>, val context: Context) 
             holder.button.setImageResource(R.drawable.ic_baseline_keyboard_arrow_down_24)
         }
 
-
+        //expands and collapses the layout
         holder.button.setOnClickListener {
             items[position].isExpanded = !items[position].isExpanded
             notifyItemChanged(position)
@@ -65,12 +65,14 @@ class CustomerAdapter(val items: ArrayList<CustomerItem>, val context: Context) 
             notifyItemChanged(position)
         }
 
+        //open profile picture on full screen
         holder.imageView.setOnClickListener {
             val intent =  Intent(context, PhotoActivity::class.java)
             intent.putExtra("url", items[position].img)
             context.startActivity(intent)
         }
 
+        //pass profile picture into imageView
         Glide.with(context).load(items[position].img)
             .placeholder(R.drawable.ic_outline_account_circle_24).into(holder.imageView)
     }
@@ -78,6 +80,7 @@ class CustomerAdapter(val items: ArrayList<CustomerItem>, val context: Context) 
 
 }
 
+//custom ViewHolder class
 class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
     val imageView: CircleImageView = itemView.findViewById(R.id.profile_image)
     val userName: TextView = itemView.findViewById(R.id.tvName)
