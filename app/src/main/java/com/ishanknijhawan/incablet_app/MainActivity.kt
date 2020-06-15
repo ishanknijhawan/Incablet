@@ -1,20 +1,23 @@
 package com.ishanknijhawan.incablet_app
 
+import android.content.res.Configuration
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.gson.Gson
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
+import okhttp3.internal.wait
 import java.io.IOException
+import java.lang.IllegalStateException
 import java.text.DateFormat
 import java.text.ParseException
 import java.text.SimpleDateFormat
@@ -27,14 +30,15 @@ class MainActivity : AppCompatActivity() {
     var alOnBoard = arrayListOf<CustomerItem>()
     var newList = arrayListOf<CustomerItem>()
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        //AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
         setContentView(R.layout.activity_main)
 
         val actionBar = supportActionBar
         actionBar!!.setBackgroundDrawable(ColorDrawable(resources.getColor(R.color.colorPrimaryDark)))
 
-        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
         layoutNoInternet.visibility = View.GONE
         progress_circular.visibility = View.GONE
 
@@ -43,7 +47,7 @@ class MainActivity : AppCompatActivity() {
             layoutNoInternet.visibility = View.GONE
             progress_circular.visibility = View.VISIBLE
             fetchResults()
-            initDialog()
+            //initDialog()
         } else {
             layoutNoInternet.visibility = View.VISIBLE
         }
@@ -86,41 +90,48 @@ class MainActivity : AppCompatActivity() {
     }
 
     //fetch results from API
+    @Throws(IllegalStateException::class)
     private fun fetchResults() {
-        GlobalScope.launch {
-            //work done on background thread
-            val response = withContext(Dispatchers.IO) { Client.api.execute() }
-            Log.d("result", "response is...")
-            if (response.isSuccessful) {
-                val data = Gson().fromJson(response.body?.string(), Customer::class.java)
-                //back to main thread for ui binding
-                launch(Dispatchers.Main) {
-                    progress_circular.visibility = View.GONE
+        try {
+            GlobalScope.launch {
+                //work done on background thread
+                val response = withContext(Dispatchers.IO) { Client.api.clone().execute() }
+                Log.d("result", "response is...")
+                if (response.isSuccessful) {
+                    val data = Gson().fromJson(response.body?.string(), Customer::class.java)
+                    //back to main thread for ui binding
+                    launch(Dispatchers.Main) {
+                        progress_circular.visibility = View.GONE
 
-                    //split the data list into active, left and on board status
-                    for (i in data.list) {
-                        when (i.status) {
-                            "active" ->
-                                alActive.add(i)
-                            "left" ->
-                                alLeft.add(i)
-                            else ->
-                                alOnBoard.add(i)
+                        //split the data list into active, left and on board status
+                        for (i in data.list) {
+                            when (i.status) {
+                                "active" ->
+                                    alActive.add(i)
+                                "left" ->
+                                    alLeft.add(i)
+                                else ->
+                                    alOnBoard.add(i)
+                            }
                         }
-                    }
-                    //sort individual list on date criteria
-                    sortByDate(alActive)
-                    sortByDate(alLeft)
-                    sortByDate(alOnBoard)
 
-                    //merge back all three sublist into new list
-                    newList.addAll(alActive)
-                    newList.addAll(alLeft)
-                    newList.addAll(alOnBoard)
-                    //pass this list for binding data
-                    bindData(newList)
+                        //sort individual list on date criteria
+                        sortByDate(alActive)
+                        sortByDate(alLeft)
+                        sortByDate(alOnBoard)
+
+                        //merge back all three sublist into new list
+                        newList.addAll(alActive)
+                        newList.addAll(alLeft)
+                        newList.addAll(alOnBoard)
+                        //pass this list for binding data
+                        bindData(newList)
+                    }
                 }
             }
+        }
+        catch (e: IllegalStateException){
+            Toast.makeText(this, "Already executed", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -143,5 +154,25 @@ class MainActivity : AppCompatActivity() {
     private fun bindData(list: ArrayList<CustomerItem>) {
         rvCustomer.layoutManager = LinearLayoutManager(this)
         rvCustomer.adapter = CustomerAdapter(list, this)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.dark_theme, menu)
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        val currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        if (item.itemId == R.id.dark_mode){
+            when(currentNightMode){
+                Configuration.UI_MODE_NIGHT_NO -> {
+                    AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+                }
+                Configuration.UI_MODE_NIGHT_YES -> {
+                    AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+                }
+            }
+        }
+        return super.onOptionsItemSelected(item)
     }
 }
